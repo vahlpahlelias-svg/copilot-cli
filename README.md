@@ -122,6 +122,215 @@ Each time you submit a prompt to GitHub Copilot CLI, your monthly quota of premi
 
 For more information about how to use the GitHub Copilot CLI, see [our official documentation](https://docs.github.com/copilot/concepts/agents/about-copilot-cli).
 
+## 🔌 API Reference and Advanced Features
+
+### Slash Commands
+
+GitHub Copilot CLI provides powerful slash commands to control your coding session:
+
+#### `/model` - Model Management
+
+List and select from available AI models directly from your terminal:
+
+```bash
+/model
+```
+
+Available models include:
+- Claude Sonnet 4.5 (default)
+- Claude Sonnet 4
+- GPT-5
+- GPT-4.1
+
+If a selected model is disabled by your organization's policy, Copilot will prompt you to request access.
+
+#### `/compact` - Context Management
+
+Manage your session's context window to maintain long-running conversations:
+
+```bash
+/compact
+```
+
+Copilot CLI automatically compacts your session history when you reach 95% of the token limit. You can also manually trigger compaction to optimize context usage and preserve important conversation history.
+
+Press `Escape` to cancel a manual compact operation.
+
+#### `/plugin` - Plugin Management
+
+Manage plugins and MCP (Model Context Protocol) server integration:
+
+```bash
+/plugin                 # View installed plugins
+/plugin install <name>  # Install a plugin
+/plugin update          # Update installed plugins
+/plugin uninstall <name> # Uninstall a plugin
+```
+
+Plugins can bundle MCP servers that load automatically when installed, extending Copilot's capabilities with custom tools and integrations.
+
+#### `/mcp show` - MCP Server Discovery
+
+List all configured MCP servers, including those provided by plugins:
+
+```bash
+/mcp show
+```
+
+This command displays all available MCP servers and their current status.
+
+#### Session Management Commands
+
+- `/session` - Manage and switch between sessions
+- `/session rename` or `/rename` - Rename the current session
+- `/resume` - Switch to a different session
+- `/diff` - Review changes made during the current session
+- `/review` - Analyze code changes with AI-powered review
+
+### Command-Line Flags
+
+Control Copilot's behavior with these command-line flags:
+
+#### Tool Access Control
+
+Restrict or allow specific tools during your session:
+
+```bash
+copilot --available-tools <tool1,tool2>   # Allowlist specific tools
+copilot --excluded-tools <tool1,tool2>    # Denylist specific tools
+```
+
+These flags are useful for restricting agent capabilities during audits or enforcing security policies.
+
+#### GitHub MCP Tools
+
+Enable read-write GitHub operations:
+
+```bash
+copilot --enable-all-github-mcp-tools
+```
+
+This flag enables full read-write access to GitHub repositories, issues, and pull requests through MCP tools.
+
+#### Session Persistence
+
+Enable infinite sessions with automatic context management:
+
+```bash
+copilot --infinite-session
+```
+
+This preserves conversation context across CLI invocations through automatic compaction checkpoints.
+
+#### Automation and Scripting
+
+For CI/CD and automation workflows:
+
+```bash
+copilot --silent                        # Minimal output for scripts
+copilot --share                         # Generate shareable session link
+copilot --additional-mcp-config <path>  # Load additional MCP configuration
+```
+
+#### CI/CD Authentication
+
+Configure authentication for automated environments:
+
+```bash
+export GITHUB_ASKPASS=/path/to/token-script
+```
+
+This environment variable specifies where authentication tokens are retrieved for Copilot integrations in pipelines.
+
+### Built-in Specialized Agents
+
+Copilot CLI includes specialized agents for common development tasks. These agents can work autonomously or be explicitly invoked:
+
+#### `explore` Agent
+
+Fast codebase analysis and navigation:
+
+```bash
+# Copilot automatically delegates exploration tasks
+# Or explicitly delegate: "explore the authentication logic"
+```
+
+The explore agent quickly searches files, understands code patterns, and answers questions about your codebase.
+
+#### `task` Agent
+
+Execute builds, tests, and other commands with intelligent output summarization:
+
+```bash
+# Copilot automatically runs tests and builds
+# Example: "run the test suite"
+```
+
+The task agent runs commands, shows brief summaries on success, and full output (including stack traces) on failure.
+
+#### `plan` Agent
+
+Generate implementation plans based on your codebase structure:
+
+```bash
+# Enable plan mode
+# Example: "create a plan for adding user authentication"
+```
+
+View detailed implementation plans in a dedicated panel before executing changes.
+
+#### `code-review` Agent
+
+AI-powered code review that surfaces high-signal issues:
+
+```bash
+/review
+```
+
+The code-review agent analyzes staged/unstaged changes and branch diffs, focusing only on bugs, security vulnerabilities, and logic errors—never style or formatting.
+
+Copilot can automatically delegate tasks among these agents and run them in parallel for efficiency.
+
+### Shortcuts and Productivity Features
+
+- **Delegation shortcut:** Use `&` prefix to run prompts in background (equivalent to `/delegate`)
+  ```bash
+  & run all tests and report back
+  ```
+
+- **Shell commands:** Execute shell commands with `!` prefix
+  ```bash
+  ! git status
+  ```
+
+- **Undo changes:** Press `Esc-Esc` to undo file changes to any previous snapshot
+
+- **Skill invocation:** Invoke custom skills using slash commands
+  ```bash
+  /skill-name
+  ```
+
+### GitHub Copilot SDK
+
+The GitHub Copilot SDK (technical preview) exposes the CLI's agent engine as a programmable API for Node.js, Python, Go, and .NET applications.
+
+#### Key SDK Features
+
+- **Session Management:** Create, manage, and compact sessions programmatically
+- **Model Selection:** Choose and configure AI models via JSON-RPC endpoints
+- **Tool Invocation:** Execute tools and handle responses
+- **Context-Aware Workflows:** Build multi-turn conversations with persistent context
+- **Subagent Capabilities:** Assign specific tool access to different agents
+- **Infinite Sessions:** Preserve memory and context across application lifecycle
+
+#### SDK Resources
+
+- [GitHub Copilot SDK Repository](https://github.com/github/copilot-sdk)
+- [SDK Documentation](https://github.blog/news-insights/company-news/build-an-agent-into-any-app-with-the-github-copilot-sdk/)
+- SDK packages available for: Node.js, Python, Go, .NET
+
+For detailed SDK integration examples and API reference, visit the official repository.
+
 ## 📢 Feedback and Participation
 
 We're excited to have you join us early in the Copilot CLI journey.
