@@ -24,8 +24,8 @@ jobs:
             // Check if it's a single word
             const isSingleWord = /^\S+$/.test(originalTitle);
 
-            // Check if title is very short (less than 10 characters)
-            const isTooShort = originalTitle.length < 10;
+            // Check if title is very short (12 characters or less)
+            const isTooShort = originalTitle.length <= 12;
 
             // List of common unhelpful phrases
             const unhelpfulPhrases = [
