@@ -1,4 +1,4 @@
-name: Close Single-Word Issues
+name: Close Low-Quality Issues
 
 on:
   issues:
@@ -13,20 +13,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Close Single-Word Issue
+      - name: Close Low-Quality Issue
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueTitle = context.payload.issue.title.trim();
-            const isSingleWord = /^\S+$/.test(issueTitle);
+            const issueTitle = context.payload.issue.title.trim().toLowerCase();
+            const originalTitle = context.payload.issue.title.trim();
 
-            if (isSingleWord) {
+            // Check if it's a single word
+            const isSingleWord = /^\S+$/.test(originalTitle);
+
+            // Check if title is very short (less than 10 characters)
+            const isTooShort = originalTitle.length < 10;
+
+            // List of common unhelpful phrases
+            const unhelpfulPhrases = [
+              'i help you',
+              'help me',
+              'help',
+              'fix bug',
+              'bug',
+              'error',
+              'issue',
+              'problem',
+              'broken',
+              'not working',
+              'doesnt work',
+              'doesn\'t work',
+              'pls help',
+              'please help',
+              'urgent',
+              'asap',
+              'quick question'
+            ];
+
+            // Check if title matches any unhelpful phrase
+            const isUnhelpfulPhrase = unhelpfulPhrases.some(phrase =>
+              issueTitle === phrase ||
+              issueTitle.startsWith(phrase + ' ') ||
+              issueTitle.endsWith(' ' + phrase)
+            );
+
+            // Determine if issue should be closed
+            const shouldClose = isSingleWord ||
+                                (isTooShort && isUnhelpfulPhrase);
+
+            if (shouldClose) {
               const issueNumber = context.payload.issue.number;
               const repo = context.repo.repo;
 
               // Close the issue and add the invalid label
-              github.rest.issues.update({
+              await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: repo,
                 issue_number: issueNumber,
@@ -35,10 +73,23 @@ jobs:
               });
 
               // Comment on the issue
+              const message = [
+                'This issue appears to have been opened with an unclear or',
+                'incomplete title. To help us assist you better, please',
+                'open a new issue with:',
+                '',
+                '- A clear, descriptive title that summarizes the problem',
+                '- Steps to reproduce the issue',
+                '- Expected vs actual behavior',
+                '- Any relevant error messages or screenshots',
+                '',
+                'Thank you for your understanding!'
+              ].join('\n');
+
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: repo,
                 issue_number: issueNumber,
-                body: `This issue may have been opened accidentally. I'm going to close it now, but feel free to open a new issue with a more descriptive title.`
+                body: message
               });
             }
