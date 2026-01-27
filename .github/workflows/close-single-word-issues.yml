@@ -41,6 +41,8 @@ jobs:
               'not working',
               'doesnt work',
               'doesn\'t work',
+              'dont work',
+              'don\'t work',
               'pls help',
               'please help',
               'urgent',
@@ -48,16 +50,20 @@ jobs:
               'quick question'
             ];
 
-            // Check if title matches any unhelpful phrase
-            const isUnhelpfulPhrase = unhelpfulPhrases.some(phrase =>
-              issueTitle === phrase ||
-              issueTitle.startsWith(phrase + ' ') ||
-              issueTitle.endsWith(' ' + phrase)
+            // Check if title exactly matches an unhelpful phrase
+            const isExactMatch = unhelpfulPhrases.some(phrase =>
+              issueTitle === phrase
             );
 
+            // For short titles, check if they start with unhelpful phrases
+            const startsWithUnhelpful = isTooShort && unhelpfulPhrases.some(phrase =>
+              issueTitle.startsWith(phrase + ' ')
+            );
+
+            const isUnhelpfulPhrase = isExactMatch || startsWithUnhelpful;
+
             // Determine if issue should be closed
-            const shouldClose = isSingleWord ||
-                                (isTooShort && isUnhelpfulPhrase);
+            const shouldClose = isSingleWord || isUnhelpfulPhrase;
 
             if (shouldClose) {
               const issueNumber = context.payload.issue.number;
