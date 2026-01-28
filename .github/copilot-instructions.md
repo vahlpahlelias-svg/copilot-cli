@@ -10,7 +10,7 @@ This is primarily a **documentation and distribution repository**, not a source 
 
 - **README.md**: Main documentation for users (installation, getting started, features)
 - **changelog.md**: Version history and release notes
-- **install.sh**: Cross-platform installation script for Linux and macOS
+- **install.sh**: Installation script for Linux and macOS (Windows uses WinGet or npm)
 - **LICENSE.md**: Proprietary license terms for GitHub Copilot CLI
 - **.github/workflows/**: Automated workflows for issue management and distribution
 - **.github/ISSUE_TEMPLATE/**: Templates for bug reports and feature requests
