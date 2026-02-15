@@ -30,7 +30,10 @@ INSTALL_DIR="$HOME/bun-termux-loader"
 if [ -d "$INSTALL_DIR" ]; then
     echo "Directory already exists, updating..."
     cd "$INSTALL_DIR"
-    git pull
+    if ! git pull; then
+        echo "Warning: Failed to update repository. This may be due to local changes or network issues."
+        echo "Continuing with existing version..."
+    fi
 else
     git clone https://github.com/kaan-escober/bun-termux-loader "$INSTALL_DIR"
     cd "$INSTALL_DIR"
@@ -71,7 +74,14 @@ case "$ARCH" in
         TARGET="aarch64-linux-gnu"
         LINKER="ld-linux-aarch64.so.1"
         ;;
-    armv7l|armv8l)
+    armv7l)
+        TARGET="armv7a-linux-gnueabihf"
+        LINKER="ld-linux-armhf.so.3"
+        ;;
+    armv8l)
+        # ARMv8 in 32-bit mode - use 32-bit toolchain but note potential performance impact
+        echo "Warning: Detected ARMv8 CPU in 32-bit mode. Using 32-bit toolchain."
+        echo "For better performance, consider using a 64-bit Termux installation if available."
         TARGET="armv7a-linux-gnueabihf"
         LINKER="ld-linux-armhf.so.3"
         ;;
@@ -81,13 +91,13 @@ case "$ARCH" in
         ;;
 esac
 
-if ! clang --target=$TARGET \
-    --sysroot=$GLIBC \
+if ! clang --target=${TARGET} \
+    --sysroot=${GLIBC} \
     -shared -fPIC -O2 -nostdlib \
-    -I$GLIBC/include \
-    -L$GLIBC/lib \
-    -Wl,--dynamic-linker=$GLIBC/lib/$LINKER \
-    -Wl,-rpath,$GLIBC/lib \
+    -I${GLIBC}/include \
+    -L${GLIBC}/lib \
+    -Wl,--dynamic-linker=${GLIBC}/lib/${LINKER} \
+    -Wl,-rpath,${GLIBC}/lib \
     -o bunfs_shim.so bunfs_shim.c -lc -ldl; then
     echo "Error: Failed to compile bunfs_shim.so. Check the error messages above."
     exit 1
