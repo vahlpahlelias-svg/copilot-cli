@@ -32,17 +32,43 @@ fi
 
 # Build wrapper
 echo "[3/4] Building wrapper binary..."
+if [ ! -f "Makefile" ]; then
+    echo "Error: Makefile not found in $INSTALL_DIR"
+    exit 1
+fi
 make
 
 # Build BunFS shim (for native libs support)
 echo "[4/4] Building BunFS shim..."
 GLIBC=/data/data/com.termux/files/usr/glibc
-clang --target=aarch64-linux-gnu \
+if [ ! -d "$GLIBC" ]; then
+    echo "Error: glibc directory not found at $GLIBC. Ensure glibc-runner is properly installed."
+    exit 1
+fi
+
+# Detect architecture
+ARCH=$(uname -m)
+case "$ARCH" in
+    aarch64|arm64)
+        TARGET="aarch64-linux-gnu"
+        LINKER="ld-linux-aarch64.so.1"
+        ;;
+    armv7l|armv8l)
+        TARGET="armv7a-linux-gnueabihf"
+        LINKER="ld-linux-armhf.so.3"
+        ;;
+    *)
+        echo "Error: Unsupported architecture: $ARCH"
+        exit 1
+        ;;
+esac
+
+clang --target=$TARGET \
     --sysroot=$GLIBC \
     -shared -fPIC -O2 -nostdlib \
     -I$GLIBC/include \
     -L$GLIBC/lib \
-    -Wl,--dynamic-linker=$GLIBC/lib/ld-linux-aarch64.so.1 \
+    -Wl,--dynamic-linker=$GLIBC/lib/$LINKER \
     -Wl,-rpath,$GLIBC/lib \
     -o bunfs_shim.so bunfs_shim.c -lc -ldl
 
