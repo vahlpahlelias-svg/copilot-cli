@@ -15,8 +15,14 @@ fi
 
 # Install dependencies
 echo "[1/4] Installing dependencies..."
-pkg update -y
-pkg install -y clang glibc-runner python git
+if ! pkg update -y; then
+    echo "Error: Failed to update package repositories. Check your internet connection."
+    exit 1
+fi
+if ! pkg install -y clang glibc-runner python git; then
+    echo "Error: Failed to install required dependencies. Check your internet connection and try again."
+    exit 1
+fi
 
 # Clone repository
 echo "[2/4] Cloning bun-termux-loader..."
@@ -36,13 +42,25 @@ if [ ! -f "Makefile" ]; then
     echo "Error: Makefile not found in $INSTALL_DIR"
     exit 1
 fi
-make
+if ! make; then
+    echo "Error: Build failed. Check the build logs above for details."
+    echo "Common solutions:"
+    echo "  - Ensure all dependencies are installed"
+    echo "  - Check that you have enough disk space"
+    echo "  - Report the issue at https://github.com/kaan-escober/bun-termux-loader/issues"
+    exit 1
+fi
 
 # Build BunFS shim (for native libs support)
 echo "[4/4] Building BunFS shim..."
 GLIBC=/data/data/com.termux/files/usr/glibc
 if [ ! -d "$GLIBC" ]; then
     echo "Error: glibc directory not found at $GLIBC. Ensure glibc-runner is properly installed."
+    exit 1
+fi
+
+if [ ! -f "bunfs_shim.c" ]; then
+    echo "Error: bunfs_shim.c not found in $INSTALL_DIR"
     exit 1
 fi
 
@@ -63,14 +81,17 @@ case "$ARCH" in
         ;;
 esac
 
-clang --target=$TARGET \
+if ! clang --target=$TARGET \
     --sysroot=$GLIBC \
     -shared -fPIC -O2 -nostdlib \
     -I$GLIBC/include \
     -L$GLIBC/lib \
     -Wl,--dynamic-linker=$GLIBC/lib/$LINKER \
     -Wl,-rpath,$GLIBC/lib \
-    -o bunfs_shim.so bunfs_shim.c -lc -ldl
+    -o bunfs_shim.so bunfs_shim.c -lc -ldl; then
+    echo "Error: Failed to compile bunfs_shim.so. Check the error messages above."
+    exit 1
+fi
 
 echo ""
 echo "=== Installation Complete ==="

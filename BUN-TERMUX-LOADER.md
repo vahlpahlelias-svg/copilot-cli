@@ -65,4 +65,6 @@ This creates a self-contained binary: `./your-bun-app-termux`
 
 ## License
 
-This installer script is provided as-is. Please refer to the [bun-termux-loader repository](https://github.com/kaan-escober/bun-termux-loader) for the license of the actual loader software.
+This installer script is provided as-is for convenience and is not officially affiliated with the bun-termux-loader project.
+
+For the license of the bun-termux-loader software itself, please refer to the [bun-termux-loader repository](https://github.com/kaan-escober/bun-termux-loader).
