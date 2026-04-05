@@ -2,7 +2,7 @@
 # Tests for install.sh
 #
 # Requirements: bats-core (https://github.com/bats-core/bats-core)
-# Run from the repository root: /tmp/bats-core/bin/bats tests/install.bats
+# Run from the repository root: bats tests/install.bats
 
 INSTALL_SCRIPT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/.." && pwd)/install.sh"
 
@@ -145,9 +145,13 @@ setup() {
 
   # Symlink real system utilities so they are available under our restricted PATH.
   # gzip must be present because GNU tar shells out to it for .tar.gz operations.
-  for cmd in bash cp gzip mktemp mkdir chmod rm basename awk tail setsid; do
+  for cmd in bash cp gzip mktemp mkdir chmod rm basename awk tail; do
     ln -sf "$(which "$cmd")" "$MOCK_BIN/$cmd"
   done
+  # setsid is used by the run_install helpers (not by install.sh itself) to
+  # disconnect from the controlling terminal so that the /dev/tty prompt in
+  # install.sh's PATH-notice section does not block the test runner.
+  ln -sf "$(which setsid)" "$MOCK_BIN/setsid"
   # tar: write as a thin wrapper script (not a symlink) to avoid chmod errors
   # when tests need to overwrite it later.
   printf '#!/bin/sh\n/usr/bin/tar "$@"\n' > "$MOCK_BIN/tar"
@@ -429,8 +433,10 @@ teardown() {
 
 @test "install dir: root defaults to /usr/local/bin (shown in output)" {
   write_mock "id" 'echo "0"'
-  # mkdir will fail for /usr/local/bin (not actually root); the error message
-  # must still mention /usr/local/bin, confirming the correct prefix was chosen.
+  # mkdir will fail for /usr/local/bin because we are not actually root.
+  # The script prints the error message that includes /usr/local/bin before
+  # exiting, which is sufficient to confirm that the correct default prefix
+  # was selected.  Exit status is intentionally not checked here.
   run_install_no_prefix
   [[ "$output" == *"/usr/local/bin"* ]]
 }
