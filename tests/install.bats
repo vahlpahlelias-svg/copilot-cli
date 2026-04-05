@@ -31,20 +31,87 @@ write_mock() {
 
 # Write the default curl mock that serves $TARBALL_PATH for tarball downloads
 # and writes a dummy file for SHA256SUMS requests.
+# Optional second argument controls SHA256SUMS behavior:
+#   "fail"    – curl exits 1 for checksums (CHECKSUMS_AVAILABLE stays false)
+#   "corrupt" – curl writes garbage as the tarball (triggers tarball validation error)
+# Default: serve the real tarball and a dummy checksums file.
 write_curl_mock() {
   local tp="$1"
+  local variant="${2:-normal}"
   rm -f "$MOCK_BIN/curl"
-  # Use printf to write the script so $tp is expanded now but $out stays literal.
-  printf '#!/bin/sh\nout=""\nwhile [ $# -gt 0 ]; do\n  case "$1" in\n    -o) out="$2"; shift 2 ;;\n    *)  shift ;;\n  esac\ndone\n[ -z "$out" ] && exit 0\ncase "$out" in\n  *SHA256SUMS*) echo dummy > "$out" ;;\n  *) /usr/bin/cp "%s" "$out" ;;\nesac\n' "$tp" > "$MOCK_BIN/curl"
+  case "$variant" in
+    fail)
+      # Succeed for the tarball, fail for the checksums download.
+      cat > "$MOCK_BIN/curl" << MOCK
+#!/bin/sh
+out=""
+while [ \$# -gt 0 ]; do
+  case "\$1" in
+    -o) out="\$2"; shift 2 ;;
+    *)  shift ;;
+  esac
+done
+[ -z "\$out" ] && exit 0
+case "\$out" in
+  *SHA256SUMS*) exit 1 ;;
+  *) /usr/bin/cp "$tp" "\$out" ;;
+esac
+MOCK
+      ;;
+    corrupt)
+      # Write garbage as the tarball; write a dummy checksums file.
+      cat > "$MOCK_BIN/curl" << MOCK
+#!/bin/sh
+out=""
+while [ \$# -gt 0 ]; do
+  case "\$1" in
+    -o) out="\$2"; shift 2 ;;
+    *)  shift ;;
+  esac
+done
+[ -z "\$out" ] && exit 0
+case "\$out" in
+  *SHA256SUMS*) echo dummy > "\$out" ;;
+  *) echo "not a tarball" > "\$out" ;;
+esac
+MOCK
+      ;;
+    *)
+      # Normal: serve the real tarball and a dummy checksums file.
+      cat > "$MOCK_BIN/curl" << MOCK
+#!/bin/sh
+out=""
+while [ \$# -gt 0 ]; do
+  case "\$1" in
+    -o) out="\$2"; shift 2 ;;
+    *)  shift ;;
+  esac
+done
+[ -z "\$out" ] && exit 0
+case "\$out" in
+  *SHA256SUMS*) echo dummy > "\$out" ;;
+  *) /usr/bin/cp "$tp" "\$out" ;;
+esac
+MOCK
+      ;;
+  esac
   chmod +x "$MOCK_BIN/curl"
 }
 
-# Write the default wget mock (same semantics as the curl mock).
+# Write the default wget mock (same semantics as the curl mock normal variant).
 write_wget_mock() {
   local tp="$1"
   rm -f "$MOCK_BIN/wget"
   # wget is called as: wget -qO <file> <url>  ($1=-qO, $2=file, $3=url)
-  printf '#!/bin/sh\nout="$2"\n[ -z "$out" ] && exit 0\ncase "$out" in\n  *SHA256SUMS*) echo dummy > "$out" ;;\n  *) /usr/bin/cp "%s" "$out" ;;\nesac\n' "$tp" > "$MOCK_BIN/wget"
+  cat > "$MOCK_BIN/wget" << MOCK
+#!/bin/sh
+out="\$2"
+[ -z "\$out" ] && exit 0
+case "\$out" in
+  *SHA256SUMS*) echo dummy > "\$out" ;;
+  *) /usr/bin/cp "$tp" "\$out" ;;
+esac
+MOCK
   chmod +x "$MOCK_BIN/wget"
 }
 
@@ -329,10 +396,7 @@ teardown() {
 
 @test "checksum: skips validation when checksums file download fails" {
   # curl: succeeds for the tarball download but fails for the checksums download.
-  rm -f "$MOCK_BIN/curl"
-  local tp="$TARBALL_PATH"
-  printf '#!/bin/sh\nout=""\nwhile [ $# -gt 0 ]; do\n  case "$1" in\n    -o) out="$2"; shift 2 ;;\n    *)  shift ;;\n  esac\ndone\n[ -z "$out" ] && exit 0\ncase "$out" in\n  *SHA256SUMS*) exit 1 ;;\n  *) /usr/bin/cp "%s" "$out" ;;\nesac\n' "$tp" > "$MOCK_BIN/curl"
-  chmod +x "$MOCK_BIN/curl"
+  write_curl_mock "$TARBALL_PATH" "fail"
   run_install
   [ "$status" -eq 0 ]
   [[ "$output" != *"Checksum validated"* ]]
@@ -342,9 +406,7 @@ teardown() {
 
 @test "tarball: exits 1 with error when downloaded file is not a valid tarball" {
   # curl: writes garbage instead of a real tarball.
-  rm -f "$MOCK_BIN/curl"
-  printf '#!/bin/sh\nout=""\nwhile [ $# -gt 0 ]; do\n  case "$1" in\n    -o) out="$2"; shift 2 ;;\n    *)  shift ;;\n  esac\ndone\n[ -z "$out" ] && exit 0\ncase "$out" in\n  *SHA256SUMS*) echo dummy > "$out" ;;\n  *) echo "not a tarball" > "$out" ;;\nesac\n' > "$MOCK_BIN/curl"
-  chmod +x "$MOCK_BIN/curl"
+  write_curl_mock "$TARBALL_PATH" "corrupt"
   run_install
   [ "$status" -eq 1 ]
   [[ "$output" == *"not a valid tarball"* ]]
